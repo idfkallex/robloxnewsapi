@@ -9,27 +9,31 @@ module.exports = async (req, res) => {
 
   if (!cachedText || now - lastFetch > 480000) {
     try {
-      // Get top/important English news
-      const url = `https://newsdata.io/api/1/news?apikey=${API_KEY}&language=en&category=top`;
+      // "top" & "world" categories give global event summaries — guaranteed to work on free plan
+      const url = `https://newsdata.io/api/1/news?apikey=${API_KEY}&language=en&category=world`;
       const response = await fetch(url);
       const data = await response.json();
 
       if (data.results && data.results.length > 0) {
-        // Select top 3 headlines and convert to plain text
-        const top3 = data.results.slice(0, 3).map(a => a.title.trim());
-        cachedText = top3.join("\n");
+        // Take top 3 most important pieces and show title + summary
+        const top3 = data.results.slice(0, 3).map(a => {
+          const title = a.title?.trim() || "No title";
+          const desc = a.description?.trim() || "No summary available.";
+          return `${title} — ${desc}`;
+        });
+        cachedText = top3.join("\n\n");
       } else {
-        cachedText = "No headlines available.";
+        cachedText = "No global news summaries available.";
       }
 
       lastFetch = now;
     } catch (err) {
       console.error("Proxy error:", err);
-      cachedText = "Error retrieving headlines.";
+      cachedText = "Error retrieving global event summaries.";
     }
   }
 
-  // Respond as plain text instead of JSON
-  res.setHeader("Content-Type", "text/plain");
+  // Respond as plain text
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.status(200).send(cachedText);
 };
