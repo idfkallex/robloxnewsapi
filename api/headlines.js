@@ -1,36 +1,35 @@
 const fetch = require("node-fetch");
 
-let cachedData = null;
+let cachedText = null;
 let lastFetch = 0;
 
 module.exports = async (req, res) => {
   const API_KEY = 'pub_09540b50aa7241d9bd88599b20f29112';
   const now = Date.now();
 
-  // Only ask NewsData.io every 8 minutes
-  if (!cachedData || now - lastFetch > 480000) {
+  if (!cachedText || now - lastFetch > 480000) {
     try {
-      // This version works with free tier — queries for all "top" headlines safely
-      const url = `https://newsdata.io/api/1/news?apikey=${API_KEY}&language=en`;
+      // Get top/important English news
+      const url = `https://newsdata.io/api/1/news?apikey=${API_KEY}&language=en&category=top`;
       const response = await fetch(url);
       const data = await response.json();
 
-      // Keep only the first 3 articles
-      if (data.results) {
-        data.results = data.results.slice(0, 3);
+      if (data.results && data.results.length > 0) {
+        // Select top 3 headlines and convert to plain text
+        const top3 = data.results.slice(0, 3).map(a => a.title.trim());
+        cachedText = top3.join("\n");
+      } else {
+        cachedText = "No headlines available.";
       }
 
-      cachedData = data;
       lastFetch = now;
-    } catch (error) {
-      console.error('Proxy Error:', error);
-      cachedData = {
-        status: "error",
-        results: { message: "Unable to fetch data" }
-      };
+    } catch (err) {
+      console.error("Proxy error:", err);
+      cachedText = "Error retrieving headlines.";
     }
   }
 
-  res.setHeader('Content-Type', 'application/json');
-  res.status(200).json(cachedData);
+  // Respond as plain text instead of JSON
+  res.setHeader("Content-Type", "text/plain");
+  res.status(200).send(cachedText);
 };
