@@ -7,15 +7,15 @@ module.exports = async (req, res) => {
   const API_KEY = 'pub_09540b50aa7241d9bd88599b20f29112';
   const now = Date.now();
 
-  // Only refresh every 8 minutes
+  // Only ask NewsData.io every 8 minutes
   if (!cachedData || now - lastFetch > 480000) {
     try {
-      // This one works even on free tier — no unsupported parameters
-      const url = `https://newsdata.io/api/1/latest?apikey=${API_KEY}&language=en&page=1`;
+      // This version works with free tier — queries for all "top" headlines safely
+      const url = `https://newsdata.io/api/1/news?apikey=${API_KEY}&language=en`;
       const response = await fetch(url);
       const data = await response.json();
 
-      // Limit to only top 3 headlines manually
+      // Keep only the first 3 articles
       if (data.results) {
         data.results = data.results.slice(0, 3);
       }
@@ -24,7 +24,10 @@ module.exports = async (req, res) => {
       lastFetch = now;
     } catch (error) {
       console.error('Proxy Error:', error);
-      cachedData = { status: "error", results: { message: "Server Error" } };
+      cachedData = {
+        status: "error",
+        results: { message: "Unable to fetch data" }
+      };
     }
   }
 
